@@ -6,25 +6,24 @@
 
 | 檔案 | 曲目 | 對應關卡 | 原始錄音 |
 | --- | --- | --- | --- |
-| `menu-qiufengci.mp3` | 秋風詞 | 標題畫面 | [Qiu Feng Ci.ogg](https://commons.wikimedia.org/wiki/File:Qiu_Feng_Ci.ogg) |
-| `chapter1-qiufengci.mp3` | 秋風詞 | 第一關 風煙俱淨 | 同上 |
+| `menu-zuiyu.mp3` | 醉漁唱晚 | 標題畫面 | [Guqin-Zuiyu_Changwan.ogg](https://commons.wikimedia.org/wiki/File:Guqin-Zuiyu_Changwan.ogg) |
+| `chapter1-zuiyu.mp3` | 醉漁唱晚 | 第一關 風煙俱淨 | 同上 |
 | `chapter2-pingsha.mp3` | 平沙落雁 | 第二關 奇山異水 | [Pingsha Luoyan.ogg](https://commons.wikimedia.org/wiki/File:Pingsha_Luoyan.ogg) |
 | `chapter3-liushui.mp3` | 流水 | 第三關 水皆縹碧 | [Liu Shui.ogg](https://commons.wikimedia.org/wiki/File:Liu_Shui.ogg) |
 | `chapter4-jiukuang.mp3` | 酒狂 | 第四關 鳶飛戾天 | [Jiu Kuang.ogg](https://commons.wikimedia.org/wiki/File:Jiu_Kuang.ogg) |
 
 ## 錄音者
 
-**Charlie Huang**，古琴，錄於英國伯明翰 Shaoyun Xuan，2006 年 4 月 15 日。
-樂譜出自《楳盦珡諩》（1931）等古琴譜本。
+**Charlie Huang**，古琴純器樂演奏（無人聲吟唱），錄於英國伯明翰 Shaoyun Xuan。
+樂譜出自《天聞閣琴譜》（1876）、《楳盦珡諩》（1931）等古琴譜本。
 
 ## 授權
 
-**Creative Commons Attribution 2.5（CC BY 2.5）**
-<https://creativecommons.org/licenses/by/2.5/>
+**Creative Commons Attribution（CC BY 2.5 / CC BY-SA 3.0）**
 
 可自由使用、修改、商用、再散布，條件是必須保留以下署名：
 
-> 曲目：秋風詞／平沙落雁／流水／酒狂
+> 曲目：醉漁唱晚／平沙落雁／流水／酒狂
 > 錄音：Charlie Huang，經由 Wikimedia Commons 提供
 > 授權：CC BY 2.5 — creativecommons.org/licenses/by/2.5
 

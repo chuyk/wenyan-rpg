@@ -75,6 +75,8 @@ export function createTerrainModel(level) {
 
   const pathX = (z) => halfRiver + 11 + Math.sin(z * 0.017) * 6 + Math.sin(z * 0.0061 + 1.2) * 4;
 
+  const riverPathX = (z) => Math.sin(z * 0.015) * (halfRiver * 0.22) + Math.sin(z * 0.005 + 0.8) * (halfRiver * 0.12);
+
   const pathBaseY = (z) => 2.2 + Math.sin(z * 0.0105 + 0.7) * 1.15 + fbm(z * 0.009, 17.3, 2) * 1.6;
 
   function heightAt(x, z) {
@@ -111,7 +113,7 @@ export function createTerrainModel(level) {
     return Math.sqrt(hx * hx + hz * hz) / (2 * e);
   }
 
-  return { heightAt, slopeAt, pathX, pathBaseY, halfRiver };
+  return { heightAt, slopeAt, pathX, riverPathX, pathBaseY, halfRiver };
 }
 
 function makeSoftTexture(inner = "rgba(255,255,255,1)", outer = "rgba(255,255,255,0)") {
@@ -603,20 +605,42 @@ function buildStele(model, level, index, side) {
   const total = level.steles.length;
   const z = TERRAIN_START_Z + 62 + (index / total) * (TERRAIN_L * 0.72) + 24;
   const stele = level.steles[index];
-  const x = model.pathX(z) + side * 4.4;
-  const y = model.heightAt(x, z);
+  // Positioned along the sides of the river channel
+  const x = model.riverPathX(z) + side * (model.halfRiver * 0.44);
+  const y = 0; // Floating / anchored at water surface level
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
 
-  const baseGeo = new THREE.BoxGeometry(4.6, 0.8, 3);
+  // Natural river islet / crag rocks supporting the stele in the water
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x484b46, roughness: 0.95 });
+  const cragGeo = new THREE.DodecahedronGeometry(2.4, 1);
+  const crag1 = new THREE.Mesh(cragGeo, rockMat);
+  crag1.position.set(0, 0.2, 0);
+  crag1.scale.set(1.5, 0.6, 1.3);
+  crag1.receiveShadow = getQuality().shadows;
+  crag1.castShadow = getQuality().shadows;
+
+  const crag2 = new THREE.Mesh(cragGeo, rockMat);
+  crag2.position.set(-side * 1.6, -0.1, 0.8);
+  crag2.scale.set(1.1, 0.5, 1.0);
+  crag2.rotation.y = 0.8;
+  crag2.receiveShadow = getQuality().shadows;
+
+  const crag3 = new THREE.Mesh(cragGeo, rockMat);
+  crag3.position.set(side * 1.5, -0.1, -0.7);
+  crag3.scale.set(1.0, 0.45, 0.9);
+  crag3.rotation.y = -0.5;
+  crag3.receiveShadow = getQuality().shadows;
+
+  const baseGeo = new THREE.BoxGeometry(4.4, 0.8, 2.8);
   const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x6b655c, roughness: 1 }));
-  base.position.y = 0.35;
+  base.position.y = 0.9;
   base.receiveShadow = getQuality().shadows;
 
   const slabGeo = new THREE.BoxGeometry(3.6, 6.4, 0.7);
   const slab = new THREE.Mesh(slabGeo, new THREE.MeshStandardMaterial({ color: 0x8d8578, roughness: 0.95 }));
-  slab.position.y = 4;
+  slab.position.y = 4.5;
   slab.castShadow = getQuality().shadows;
 
   const faceMat = new THREE.MeshStandardMaterial({
@@ -625,33 +649,36 @@ function buildStele(model, level, index, side) {
     emissive: 0x2a2419,
     emissiveIntensity: 0.5,
   });
+  // Stele face angled towards the river channel
   const face = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 4.2), faceMat);
-  face.position.set(0, 4, side > 0 ? 0.37 : -0.37);
-  face.rotation.y = side > 0 ? 0 : Math.PI;
+  const angleToRiver = side > 0 ? -Math.PI / 8 : Math.PI + Math.PI / 8;
+  group.rotation.y = angleToRiver;
+
+  face.position.set(0, 4.5, 0.37);
 
   const halo = new THREE.Sprite(
     new THREE.SpriteMaterial({
       map: makeSoftTexture("rgba(255,226,160,1)", "rgba(255,226,160,0)"),
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.45,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     })
   );
-  halo.scale.set(9, 9, 1);
-  halo.position.y = 4.4;
+  halo.scale.set(9.5, 9.5, 1);
+  halo.position.y = 4.8;
 
-  const lamp = new THREE.PointLight(0xffca7a, 2.6, 22, 2);
-  lamp.position.set(0, 4.4, side > 0 ? 1.6 : -1.6);
+  const lamp = new THREE.PointLight(0xffca7a, 2.8, 24, 2);
+  lamp.position.set(0, 4.8, 1.8);
 
-  group.add(base, slab, face, halo, lamp);
+  group.add(crag1, crag2, crag3, base, slab, face, halo, lamp);
 
   group.userData = {
     kind: "stele",
     index,
     char: stele.char,
     position: new THREE.Vector3(x, y, z),
-    triggerRadius: 6.5,
+    triggerRadius: 9.2,
     solved: false,
     faceMat,
     halo,
@@ -666,39 +693,51 @@ function buildStele(model, level, index, side) {
 function buildExitGate(model, level) {
   const t = level.theme;
   const z = TERRAIN_END_Z - 34;
-  const x = model.pathX(z);
-  const y = model.heightAt(x, z);
+  const x = model.riverPathX(z);
+  const y = 0;
 
   const group = new THREE.Group();
   group.position.set(x, y, z);
 
   const pillarMat = new THREE.MeshStandardMaterial({ color: 0x8a2b1e, roughness: 0.7 });
   const beamMat = new THREE.MeshStandardMaterial({ color: 0x6f2318, roughness: 0.8 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xb08b3f, metalness: 0.3, roughness: 0.5 });
 
-  const left = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 11, 10), pillarMat);
-  left.position.set(-5, 5.5, 0);
+  // Wide span gate arching across the Fuchun river
+  const halfSpan = Math.min(model.halfRiver * 0.85, 20);
+
+  const left = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 15, 12), pillarMat);
+  left.position.set(-halfSpan, 7, 0);
   left.castShadow = getQuality().shadows;
 
   const right = left.clone();
-  right.position.x = 5;
+  right.position.x = halfSpan;
 
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(13.5, 0.9, 1.2), beamMat);
-  beam.position.y = 11.2;
+  // Base stone pedestals in water
+  const baseStoneGeo = new THREE.CylinderGeometry(1.6, 2.0, 3, 10);
+  const baseStoneMat = new THREE.MeshStandardMaterial({ color: 0x4a4a46, roughness: 0.9 });
+  const leftBase = new THREE.Mesh(baseStoneGeo, baseStoneMat);
+  leftBase.position.set(-halfSpan, 0.5, 0);
+  const rightBase = leftBase.clone();
+  rightBase.position.x = halfSpan;
+
+  const totalWidth = halfSpan * 2 + 5;
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(totalWidth, 1.2, 1.8), beamMat);
+  beam.position.y = 13.8;
   beam.castShadow = getQuality().shadows;
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(15, 0.5, 1.6), beamMat);
-  top.position.y = 12.3;
-  top.rotation.z = 0.03;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(totalWidth + 3, 0.8, 2.4), goldMat);
+  top.position.y = 15.0;
 
   const veilMat = new THREE.MeshBasicMaterial({
     color: 0xffd9a0,
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.18,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
-  const veil = new THREE.Mesh(new THREE.PlaneGeometry(10, 11), veilMat);
-  veil.position.set(0, 5.5, 0);
+  const veil = new THREE.Mesh(new THREE.PlaneGeometry(halfSpan * 2 - 1, 13), veilMat);
+  veil.position.set(0, 6.5, 0);
 
   const glow = new THREE.Sprite(
     new THREE.SpriteMaterial({
@@ -709,20 +748,608 @@ function buildExitGate(model, level) {
       blending: THREE.AdditiveBlending,
     })
   );
-  glow.scale.set(26, 20, 1);
-  glow.position.y = 5.5;
+  glow.scale.set(halfSpan * 2 + 8, 22, 1);
+  glow.position.y = 7.0;
 
-  group.add(left, right, beam, top, veil, glow);
+  group.add(leftBase, rightBase, left, right, beam, top, veil, glow);
 
   group.userData = {
     kind: "exit",
     position: new THREE.Vector3(x, y, z),
-    triggerRadius: 5.5,
+    triggerRadius: 12.0,
     veil,
     glow,
   };
 
   return group;
+}
+
+function buildRiverEncounters(model, level) {
+  const encounters = [];
+  const flasks = [];
+  const animators = [];
+
+  // 1. 富春江釣叟 (嚴子陵釣台後人)
+  {
+    const z = TERRAIN_START_Z + 115;
+    const x = model.riverPathX(z) - model.halfRiver * 0.46;
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+
+    // 竹筏
+    const raftMat = new THREE.MeshStandardMaterial({ color: 0x8a724d, roughness: 0.9 });
+    for (let i = -2; i <= 2; i++) {
+      const bamboo = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 3.8, 8), raftMat);
+      bamboo.rotation.x = Math.PI / 2;
+      bamboo.position.set(i * 0.38, 0.05, 0);
+      group.add(bamboo);
+    }
+
+    // 老翁身軀
+    const robeMat = new THREE.MeshStandardMaterial({ color: 0x556066, roughness: 0.85 });
+    const body = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 8), robeMat);
+    body.position.set(0, 0.5, 0);
+    group.add(body);
+
+    // 斗笠
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0xc49b45, roughness: 0.75 });
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.22, 10), hatMat);
+    hat.position.set(0, 1.05, 0);
+    group.add(hat);
+
+    // 釣竿與魚線
+    const rodMat = new THREE.MeshStandardMaterial({ color: 0x3d2719, roughness: 0.8 });
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 2.6, 6), rodMat);
+    rod.rotation.z = -0.65;
+    rod.rotation.y = 0.4;
+    rod.position.set(0.6, 0.9, 0.6);
+    group.add(rod);
+
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: makeSoftTexture("rgba(180,220,255,0.8)", "rgba(180,220,255,0)"),
+        transparent: true,
+        opacity: 0.35,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    halo.scale.set(5.5, 5.5, 1);
+    halo.position.y = 1.0;
+    group.add(halo);
+
+    group.userData = {
+      kind: "npc",
+      name: "富春江釣叟",
+      avatar: "🎣",
+      lines: [
+        "船家慢點～「游魚細石」都被衝跑啦！千丈見底把魚看得清清楚楚，魚就是不咬鉤……罷了，老夫贈你躍魚一尾，前程大順！",
+        "自富陽至桐廬一百許里，老夫在此垂釣三十載，這山水真是「天下獨絕」啊！"
+      ],
+      bonusScore: 35,
+      triggerRadius: 13.5,
+      visited: false,
+      position: new THREE.Vector3(x, 0, z),
+    };
+
+    encounters.push(group);
+    animators.push((t) => {
+      group.position.y = Math.sin(t * 1.8 + 1) * 0.04;
+      rod.rotation.z = -0.65 + Math.sin(t * 3.2) * 0.05;
+    });
+  }
+
+  // 2. 宋府信鴿 (好鳥相鳴)
+  {
+    const z = TERRAIN_START_Z + 225;
+    const x = model.riverPathX(z) + model.halfRiver * 0.45;
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+
+    // 江中石樁
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x4d504b, roughness: 0.95 });
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 2.2, 8), postMat);
+    post.position.set(0, 0.6, 0);
+    group.add(post);
+
+    // 白鳥身體
+    const birdMat = new THREE.MeshStandardMaterial({ color: 0xf5f6f8, roughness: 0.6 });
+    const birdBody = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), birdMat);
+    birdBody.position.set(0, 1.85, 0);
+    birdBody.scale.set(0.9, 0.7, 1.3);
+
+    // 翅膀
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 0.45), wingMat);
+    wingL.position.set(-0.3, 1.9, 0);
+    const wingR = wingL.clone();
+    wingR.position.x = 0.3;
+
+    // 喙
+    const beakMat = new THREE.MeshStandardMaterial({ color: 0xe6a122 });
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 5), beakMat);
+    beak.rotation.x = Math.PI / 2;
+    beak.position.set(0, 1.85, 0.38);
+
+    group.add(post, birdBody, wingL, wingR, beak);
+
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: makeSoftTexture("rgba(255,245,200,0.8)", "rgba(255,245,200,0)"),
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    halo.scale.set(5.0, 5.0, 1);
+    halo.position.y = 1.9;
+    group.add(halo);
+
+    group.userData = {
+      kind: "npc",
+      name: "宋府信鴿",
+      avatar: "🕊️",
+      lines: [
+        "嚶嚶～吳大人！宋元思老爺在桐廬等你的信都快等睡著了！你是不是在江上「從流飄蕩」摸魚啊？",
+        "好鳥相鳴，嚶嚶成韻……看在江水這麼縹碧的份上，我就晚半個時辰回去交差吧～"
+      ],
+      bonusScore: 25,
+      triggerRadius: 13.5,
+      visited: false,
+      position: new THREE.Vector3(x, 0, z),
+    };
+
+    encounters.push(group);
+    animators.push((t) => {
+      wingL.rotation.z = Math.sin(t * 8.5) * 0.45;
+      wingR.rotation.z = -Math.sin(t * 8.5) * 0.45;
+      birdBody.rotation.y = Math.sin(t * 1.5) * 0.3;
+    });
+  }
+
+  // 3. 經綸世務者 (窺谷忘反)
+  {
+    const z = TERRAIN_START_Z + 335;
+    const x = model.riverPathX(z) - model.halfRiver * 0.44;
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+
+    // 漂浮大酒葫蘆
+    const gourdMat = new THREE.MeshStandardMaterial({ color: 0xb55a2a, roughness: 0.7 });
+    const g1 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 8), gourdMat);
+    g1.position.set(0, 0.25, 0);
+    const g2 = new THREE.Mesh(new THREE.SphereGeometry(0.36, 8, 8), gourdMat);
+    g2.position.set(0, 0.75, 0);
+    group.add(g1, g2);
+
+    // 歪戴的官帽
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x1f232b, roughness: 0.8 });
+    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.35, 8), hatMat);
+    hat.position.set(0.4, 0.45, 0.3);
+    hat.rotation.z = 0.4;
+    group.add(hat);
+
+    // 漂浮竹簡
+    const scrollMat = new THREE.MeshStandardMaterial({ color: 0xd9c28b, roughness: 0.9 });
+    const scroll = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 0.35), scrollMat);
+    scroll.position.set(-0.6, 0.05, 0.4);
+    scroll.rotation.y = 0.5;
+    group.add(scroll);
+
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: makeSoftTexture("rgba(255,200,160,0.8)", "rgba(255,200,160,0)"),
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    halo.scale.set(5.5, 5.5, 1);
+    halo.position.y = 0.6;
+    group.add(halo);
+
+    group.userData = {
+      kind: "npc",
+      name: "經綸世務者",
+      avatar: "📜",
+      lines: [
+        "呼～天天在衙門加班批公文！今日一見富春江奇山異水……本官決定「忘反」了！公文丟水裡，誰愛批誰批！",
+        "少年郎，鳶飛戾天者望峰息心，經綸世務者窺谷忘反……功名利祿轉頭空，不如江上一壺酒！"
+      ],
+      bonusScore: 30,
+      triggerRadius: 13.5,
+      visited: false,
+      position: new THREE.Vector3(x, 0, z),
+    };
+
+    encounters.push(group);
+    animators.push((t) => {
+      group.position.y = Math.sin(t * 2.0 + 2.5) * 0.06;
+      group.rotation.z = Math.sin(t * 1.5) * 0.08;
+      scroll.position.y = Math.sin(t * 2.4) * 0.03;
+    });
+  }
+
+  // 4. 百叫靈猿 (猿則百叫無絕)
+  {
+    const z = TERRAIN_START_Z + 415;
+    const x = model.riverPathX(z) + model.halfRiver * 0.52;
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+
+    // 突出崖石
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x484b45, roughness: 0.95 });
+    const ledge = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4, 1), rockMat);
+    ledge.scale.set(1.4, 1.8, 1.2);
+    ledge.position.set(0, 1.2, 0);
+    group.add(ledge);
+
+    // 靈猿身軀
+    const monkeyMat = new THREE.MeshStandardMaterial({ color: 0x6e4727, roughness: 0.85 });
+    const mBody = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 8), monkeyMat);
+    mBody.position.set(0, 2.7, 0);
+    const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), monkeyMat);
+    mHead.position.set(0, 3.2, 0.1);
+
+    // 尾巴
+    const tailMat = new THREE.MeshStandardMaterial({ color: 0x5a391d });
+    const tail = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.06, 6, 12, Math.PI * 1.2), tailMat);
+    tail.position.set(0, 2.6, -0.3);
+    tail.rotation.x = Math.PI / 2;
+
+    group.add(ledge, mBody, mHead, tail);
+
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: makeSoftTexture("rgba(255,225,180,0.8)", "rgba(255,225,180,0)"),
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    halo.scale.set(5.5, 5.5, 1);
+    halo.position.y = 2.8;
+    group.add(halo);
+
+    group.userData = {
+      kind: "npc",
+      name: "百叫靈猿",
+      avatar: "🐒",
+      lines: [
+        "吱吱！聽說有人嫌我們「猿則百叫無絕」太吵？這叫大自然天然立體環繞音效，懂不懂文人雅興！",
+        "千峰競秀，互相軒邈～少年郎好船技，快往前闖過金光水門吧！"
+      ],
+      bonusScore: 25,
+      triggerRadius: 14.5,
+      visited: false,
+      position: new THREE.Vector3(x, 0, z),
+    };
+
+    encounters.push(group);
+    animators.push((t) => {
+      mHead.rotation.y = Math.sin(t * 3.0) * 0.35;
+      mBody.position.y = 2.7 + Math.sin(t * 4.5) * 0.04;
+    });
+  }
+
+  // 5. 漂流竹筒 (江中驚喜彩蛋)
+  const flaskZOffsets = [170, 280, 370];
+  const flaskTypes = [
+    { type: "boost", title: "【猛浪若奔】順流急湍！獲得 4 秒破浪衝刺！", avatar: "🌊" },
+    { type: "heal", title: "【清泉甘露】山泉泠泠作響，清潤怡神，回覆 1 顆心！", avatar: "💖" },
+    { type: "bonus", title: "【富春奇石】拾得江底美石，直視無礙，+30 分！", avatar: "💎" },
+  ];
+
+  flaskZOffsets.forEach((zOff, i) => {
+    const z = TERRAIN_START_Z + zOff;
+    const x = model.riverPathX(z) + (i % 2 === 0 ? 3.5 : -3.5);
+    const flask = new THREE.Group();
+    flask.position.set(x, 0, z);
+
+    // 竹筒管身
+    const bambooMat = new THREE.MeshStandardMaterial({
+      color: 0x4a7a50,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.9, 8), bambooMat);
+    tube.rotation.x = Math.PI / 2;
+    tube.rotation.z = 0.4;
+
+    // 紅布塞
+    const corkMat = new THREE.MeshStandardMaterial({ color: 0x9c2b1e });
+    const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 6), corkMat);
+    cork.position.set(0, 0, 0.48);
+    cork.rotation.x = Math.PI / 2;
+
+    const glow = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: makeSoftTexture("rgba(255,225,120,0.9)", "rgba(255,225,120,0)"),
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    glow.scale.set(3.5, 3.5, 1);
+    glow.position.y = 0.2;
+
+    flask.add(tube, cork, glow);
+
+    flask.userData = {
+      kind: "flask",
+      info: flaskTypes[i % flaskTypes.length],
+      picked: false,
+      position: new THREE.Vector3(x, 0, z),
+      triggerRadius: 4.8,
+      glow,
+    };
+
+    flasks.push(flask);
+    animators.push((t) => {
+      if (!flask.userData.picked) {
+        flask.position.y = Math.sin(t * 2.8 + i) * 0.08;
+        flask.rotation.y = t * 1.2;
+        glow.material.opacity = 0.45 + Math.sin(t * 3.5) * 0.2;
+      }
+    });
+  });
+
+  // 6. 游魚躍水 (游魚細石，直視無礙)
+  const fishGroup = new THREE.Group();
+  const fishMat = new THREE.MeshStandardMaterial({
+    color: 0xd8e8f0,
+    metalness: 0.4,
+    roughness: 0.4,
+  });
+  const fishGeo = new THREE.ConeGeometry(0.18, 0.8, 5);
+  fishGeo.rotateX(Math.PI / 2);
+
+  const fishes = [];
+  const fishSpawns = [
+    { z: TERRAIN_START_Z + 80, side: -1 },
+    { z: TERRAIN_START_Z + 195, side: 1 },
+    { z: TERRAIN_START_Z + 360, side: 0 },
+  ];
+
+  fishSpawns.forEach((sp, idx) => {
+    const fMesh = new THREE.Mesh(fishGeo, fishMat);
+    const fx = model.riverPathX(sp.z) + sp.side * 4.5;
+    fMesh.position.set(fx, -0.4, sp.z);
+    fishGroup.add(fMesh);
+    fishes.push({
+      mesh: fMesh,
+      baseX: fx,
+      baseZ: sp.z,
+      phase: idx * 2.2,
+    });
+  });
+
+  animators.push((t) => {
+    fishes.forEach((f) => {
+      const cycle = (t * 1.6 + f.phase) % 4.5;
+      if (cycle < 1.2) {
+        const p = cycle / 1.2;
+        const jumpY = Math.sin(p * Math.PI) * 1.2 - 0.2;
+        f.mesh.position.y = jumpY;
+        f.mesh.rotation.x = (p - 0.5) * Math.PI * 1.4;
+        f.mesh.rotation.z = Math.sin(t * 12) * 0.25;
+        f.mesh.visible = true;
+      } else {
+        f.mesh.position.y = -1.5;
+        f.mesh.visible = false;
+      }
+    });
+  });
+
+  return { encounters, flasks, fishGroup, animators };
+}
+
+function buildRiverHazards(model, level) {
+  const rocks = [];
+  const rapids = [];
+  const group = new THREE.Group();
+  const animators = [];
+
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0x3d3f3b,
+    roughness: 0.96,
+    metalness: 0.05,
+    flatShading: true,
+  });
+  const mossMat = new THREE.MeshStandardMaterial({
+    color: 0x47563c,
+    roughness: 0.98,
+    flatShading: true,
+  });
+
+  const foamTex = makeSoftTexture("rgba(255,255,255,0.85)", "rgba(220,240,250,0)");
+  const foamMat = new THREE.MeshBasicMaterial({
+    map: foamTex,
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+
+  const configs = {
+    1: [
+      { z: 90, side: -0.32, r: 2.2 },
+      { z: 155, side: 0.35, r: 2.4 },
+      { z: 230, side: -0.28, r: 2.5 },
+      { z: 310, side: 0.32, r: 2.3 },
+      { z: 395, side: -0.25, r: 2.6 },
+    ],
+    2: [
+      { z: 75, side: -0.35, r: 2.5 },
+      { z: 110, side: 0.32, r: 2.8 },
+      { z: 145, side: -0.15, r: 2.2 },
+      { z: 185, side: 0.38, r: 3.0 },
+      { z: 220, side: -0.36, r: 2.6 },
+      { z: 255, side: 0.18, r: 2.4 },
+      { z: 290, side: -0.32, r: 2.7 },
+      { z: 325, side: 0.35, r: 2.9 },
+      { z: 360, side: -0.18, r: 2.3 },
+      { z: 390, side: 0.28, r: 2.8 },
+      { z: 415, side: -0.35, r: 2.5 },
+      { z: 440, side: 0.22, r: 2.6 },
+    ],
+    3: [
+      { z: 80, side: 0.34, r: 2.6 },
+      { z: 115, side: -0.32, r: 2.8 },
+      { z: 150, side: 0.22, r: 2.4 },
+      { z: 190, side: -0.25, r: 2.9 },
+      { z: 225, side: 0.36, r: 2.7 },
+      { z: 260, side: -0.35, r: 2.5 },
+      { z: 295, side: 0.15, r: 2.5 },
+      { z: 330, side: -0.28, r: 3.1 },
+      { z: 365, side: 0.32, r: 2.6 },
+      { z: 400, side: -0.22, r: 2.7 },
+      { z: 430, side: 0.35, r: 2.8 },
+      { z: 450, side: -0.32, r: 2.5 },
+    ],
+    4: [
+      { z: 85, side: -0.3, r: 2.5 },
+      { z: 125, side: 0.32, r: 2.7 },
+      { z: 170, side: -0.2, r: 2.4 },
+      { z: 215, side: 0.35, r: 3.0 },
+      { z: 260, side: -0.35, r: 2.8 },
+      { z: 305, side: 0.25, r: 2.5 },
+      { z: 350, side: -0.28, r: 2.9 },
+      { z: 395, side: 0.32, r: 2.7 },
+      { z: 435, side: -0.25, r: 2.6 },
+    ],
+  };
+
+  const rockList = configs[level.id] || configs[1];
+
+  rockList.forEach((cfg, idx) => {
+    const z = TERRAIN_START_Z + cfg.z;
+    const riverX = model.riverPathX(z);
+    const x = riverX + cfg.side * (model.halfRiver * 0.82);
+    const r = cfg.r;
+
+    const rockGroup = new THREE.Group();
+    rockGroup.position.set(x, 0, z);
+
+    const geo1 = new THREE.DodecahedronGeometry(r, 1);
+    const m1 = new THREE.Mesh(geo1, rockMat);
+    m1.position.set(0, r * 0.45 - 0.2, 0);
+    m1.scale.set(1.1, 0.75, 1.2);
+    m1.rotation.set((idx % 3) * 0.4, (idx * 1.3) % Math.PI, (idx % 2) * 0.2);
+    m1.castShadow = getQuality().shadows;
+    m1.receiveShadow = getQuality().shadows;
+    rockGroup.add(m1);
+
+    const geo2 = new THREE.DodecahedronGeometry(r * 0.65, 0);
+    const m2 = new THREE.Mesh(geo2, mossMat);
+    m2.position.set(r * 0.4, r * 0.25 - 0.1, -r * 0.3);
+    m2.scale.set(0.9, 0.6, 1.1);
+    m2.rotation.set(0.3, idx, -0.2);
+    m2.receiveShadow = getQuality().shadows;
+    rockGroup.add(m2);
+
+    const foamGeo = new THREE.RingGeometry(r * 0.7, r * 1.55, 16);
+    foamGeo.rotateX(-Math.PI / 2);
+    const foam = new THREE.Mesh(foamGeo, foamMat.clone());
+    foam.position.y = 0.05;
+    rockGroup.add(foam);
+
+    const spray = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: foamTex,
+        transparent: true,
+        opacity: 0.25,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    spray.scale.set(r * 2.5, r * 1.4, 1);
+    spray.position.set(0, 0.8, 0);
+    rockGroup.add(spray);
+
+    group.add(rockGroup);
+
+    animators.push((time) => {
+      foam.scale.setScalar(1.0 + Math.sin(time * 3.5 + idx * 1.2) * 0.08);
+      foam.material.opacity = 0.45 + Math.sin(time * 2.8 + idx) * 0.15;
+    });
+
+    rocks.push({
+      mesh: rockGroup,
+      position: new THREE.Vector3(x, 0, z),
+      radius: r * 0.95,
+      z,
+    });
+  });
+
+  const rapidConfigs = {
+    1: [{ z: 200, length: 45, width: 9 }],
+    2: [
+      { z: 120, length: 55, width: 11 },
+      { z: 235, length: 65, width: 10 },
+      { z: 340, length: 60, width: 11 },
+    ],
+    3: [
+      { z: 165, length: 55, width: 10 },
+      { z: 310, length: 60, width: 11 },
+    ],
+    4: [
+      { z: 190, length: 55, width: 11 },
+      { z: 320, length: 60, width: 11 },
+    ],
+  };
+
+  const rapidList = rapidConfigs[level.id] || rapidConfigs[1];
+  rapidList.forEach((rc, rIdx) => {
+    const startZ = TERRAIN_START_Z + rc.z;
+    const endZ = startZ + rc.length;
+    const midZ = (startZ + endZ) / 2;
+    const centerX = model.riverPathX(midZ);
+
+    const rapidGeo = new THREE.PlaneGeometry(rc.width, rc.length, 4, 16);
+    rapidGeo.rotateX(-Math.PI / 2);
+
+    const rapidMat = new THREE.MeshBasicMaterial({
+      color: 0x66d9ee,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const rapidMesh = new THREE.Mesh(rapidGeo, rapidMat);
+    rapidMesh.position.set(centerX, 0.08, midZ);
+    group.add(rapidMesh);
+
+    const chevronGeo = new THREE.ConeGeometry(0.8, 2.2, 3);
+    chevronGeo.rotateX(-Math.PI / 2);
+    const chevronMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+    });
+    for (let c = 0; c < 5; c++) {
+      const ch = new THREE.Mesh(chevronGeo, chevronMat);
+      ch.position.set(0, 0.04, -rc.length / 2 + (c + 0.5) * (rc.length / 5));
+      rapidMesh.add(ch);
+    }
+
+    rapids.push({
+      mesh: rapidMesh,
+      startZ,
+      endZ,
+      centerX,
+      width: rc.width,
+      speedBonus: 7.5,
+      triggered: false,
+    });
+
+    animators.push((time) => {
+      rapidMat.opacity = 0.18 + Math.sin(time * 4.5 + rIdx) * 0.08;
+      rapidMesh.position.x = model.riverPathX(midZ);
+    });
+  });
+
+  return { group, rocks, rapids, animators };
 }
 
 export function buildWorld(scene, level) {
@@ -803,6 +1430,15 @@ export function buildWorld(scene, level) {
   const exit = buildExitGate(model, level);
   root.add(exit);
 
+  const { encounters, flasks, fishGroup, animators } = buildRiverEncounters(model, level);
+  encounters.forEach((e) => root.add(e));
+  flasks.forEach((f) => root.add(f));
+  root.add(fishGroup);
+
+  const hazards = buildRiverHazards(model, level);
+  root.add(hazards.group);
+  hazards.animators.forEach((fn) => animators.push(fn));
+
   const hemi = new THREE.HemisphereLight(theme.sky[0], theme.groundDeep, 1.5);
   const sun = new THREE.DirectionalLight(theme.sun, 2.1);
   sun.position.set(90, 140, 70);
@@ -828,13 +1464,18 @@ export function buildWorld(scene, level) {
     stats,
     steles,
     exit,
+    encounters,
+    flasks,
+    rocks: hazards.rocks,
+    rapids: hazards.rapids,
     light: sun,
     theme,
-    spawn: new THREE.Vector3(model.pathX(TERRAIN_START_Z + 26), 0, TERRAIN_START_Z + 26),
+    spawn: new THREE.Vector3(model.riverPathX(TERRAIN_START_Z + 26), 0, TERRAIN_START_Z + 26),
     update(dt, time, focus) {
       water.material.uniforms.uTime.value = time;
       mist.userData.update(time);
       birds.update(dt, time);
+      animators.forEach((fn) => fn(time));
 
       const fx = focus ? focus.x : 0;
       const fz = focus ? focus.z : 0;

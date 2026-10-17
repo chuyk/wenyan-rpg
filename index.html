@@ -19,6 +19,7 @@
 <body>
 
 <canvas id="scene"></canvas>
+<div id="damage-vignette" class="damage-vignette"></div>
 
 <div id="hud" class="hidden">
   <div id="crosshair"></div>
@@ -29,9 +30,12 @@
       <div id="chapter-title">風煙俱淨</div>
       <div id="chapter-line">風煙俱淨，天山共色。</div>
     </div>
-    <div id="stats">
-      <div id="hearts"></div>
-      <div id="score">分數 0</div>
+    <div id="top-right-group">
+      <div id="stats">
+        <div id="hearts"></div>
+        <div id="score">分數 0</div>
+      </div>
+      <button id="btn-pause-touch" title="暫停遊戲（Esc）">⏸</button>
     </div>
   </div>
 
@@ -42,12 +46,35 @@
   </div>
 
   <div id="objective">
-    <span id="objective-text">尋找三面字碑，破關前進</span>
+    <span id="objective-text">從流飄蕩，順流尋訪三面江中字碑</span>
   </div>
 
   <div id="minimap">
     <canvas id="minimap-canvas" width="180" height="180"></canvas>
     <div id="minimap-label">字碑 0 / 3</div>
+  </div>
+
+  <div id="touch-controls" class="touch-layer hidden">
+    <div id="touch-joystick-zone">
+      <div id="touch-joystick-base">
+        <div id="touch-joystick-thumb"></div>
+      </div>
+      <span class="touch-label">操舵・行舟</span>
+    </div>
+    <div id="touch-look-zone">
+      <span class="touch-look-hint">滑動環顧山水</span>
+    </div>
+    <div id="touch-action-zone">
+      <button id="btn-touch-boost" class="touch-btn">奮楫<small>加速</small></button>
+    </div>
+  </div>
+
+  <div id="npc-toast" class="hidden">
+    <div class="toast-avatar" id="toast-avatar">🎣</div>
+    <div class="toast-content">
+      <div class="toast-name" id="toast-name">富春江釣叟</div>
+      <div class="toast-text" id="toast-text">划船慢點～「游魚細石」都被你衝跑啦！</div>
+    </div>
   </div>
 </div>
 
@@ -66,16 +93,48 @@
     </div>
 
     <div class="controls">
-      <span><b>W A S D</b> 移動</span>
-      <span><b>滑鼠</b> 轉向</span>
-      <span><b>空白鍵</b> 跳躍</span>
+      <span><b>W A S D</b> 划船前進</span>
+      <span><b>滑鼠 / 平板滑動</b> 轉向</span>
+      <span><b>Shift / 奮楫</b> 加速</span>
       <span><b>M</b> 音樂開關</span>
-      <span><b>Esc</b> 放開滑鼠</span>
+      <span><b>Esc / ⏸</b> 暫停</span>
     </div>
 
+    <div class="device-pill">
+      <span>💻 電腦桌機</span>
+      <span>📱 平板電腦</span>
+      <span class="warn-pill">⚠️ 手機螢幕較小，建議以電腦/平板操作</span>
+    </div>
+
+    <div id="saved-summary" class="saved-summary hidden">
+      <span class="saved-badge">📜 本機存檔進度</span>
+      <div class="saved-details">
+        <span id="saved-chapter-text" class="saved-title">第 2 關・奇山異水</span>
+        <span id="saved-stats-text" class="saved-stats">分數 380 ｜ ❤️ 6</span>
+      </div>
+    </div>
+
+    <button id="btn-continue" class="primary-btn pulse-glow hidden">繼續航程</button>
     <button id="btn-start">開始遊戲</button>
-    <button id="btn-reset" class="ghost">清除進度</button>
+    <button id="btn-reset" class="ghost">清除存檔</button>
     <button id="btn-credits" class="ghost">音樂與版權</button>
+  </div>
+</div>
+
+<div id="mobile-warning" class="overlay hidden">
+  <div class="ink-card mobile-warning-card">
+    <div class="warning-seal">裝置提示</div>
+    <h2>裝置螢幕建議</h2>
+    <p class="subtitle">奇山異水・天下獨絕</p>
+    <div class="passage">
+      <p>親愛的同學／遊客：</p>
+      <p>系統偵測到您目前使用的裝置螢幕較小（手機畫面）。</p>
+      <p>《與宋元思書・山水謎境》為 3D 富春江乘船泛舟體驗，包含江行兩岸山水觀賞與字碑文言解題。<b>強烈建議使用「電腦」或「平板電腦」橫向操作</b>，以獲得最佳學習效果與寬闊視野！</p>
+    </div>
+    <div class="warning-buttons">
+      <button id="btn-warning-continue">我已知曉，仍要體驗</button>
+      <button id="btn-warning-back" class="ghost">返回</button>
+    </div>
   </div>
 </div>
 
@@ -95,7 +154,7 @@
           <tr><th>曲目</th><th>用於</th><th>原始錄音</th></tr>
         </thead>
         <tbody>
-          <tr><td>秋風詞</td><td>標題畫面、第一關</td><td><a href="https://commons.wikimedia.org/wiki/File:Qiu_Feng_Ci.ogg">Qiu Feng Ci.ogg</a></td></tr>
+          <tr><td>醉漁唱晚</td><td>標題畫面、第一關</td><td><a href="https://commons.wikimedia.org/wiki/File:Guqin-Zuiyu_Changwan.ogg">Guqin-Zuiyu_Changwan.ogg</a></td></tr>
           <tr><td>平沙落雁</td><td>第二關</td><td><a href="https://commons.wikimedia.org/wiki/File:Pingsha_Luoyan.ogg">Pingsha Luoyan.ogg</a></td></tr>
           <tr><td>流水</td><td>第三關</td><td><a href="https://commons.wikimedia.org/wiki/File:Liu_Shui.ogg">Liu Shui.ogg</a></td></tr>
           <tr><td>酒狂</td><td>第四關</td><td><a href="https://commons.wikimedia.org/wiki/File:Jiu_Kuang.ogg">Jiu Kuang.ogg</a></td></tr>
@@ -103,9 +162,14 @@
       </table>
 
       <p class="note-block">
+        <b>💡 國文教學解惑：為何選用古琴純器樂名曲《醉漁唱晚》？</b><br />
+        《醉漁唱晚》為著名古琴名曲（純器樂演奏，無人聲吟唱），相傳取材於唐代詩人陸龜蒙、皮日休泛舟松江、嘯傲煙波的隱逸生活。曲調生動描繪了漁舟晚唱、醉意清風、煙水迷濛之景，與吳均《與宋元思書》中「從流飄蕩，任意東西」的乘船泛舟之旅高度契合，更能引領同學體會乘舟漫遊富春江時的悠然自在。
+      </p>
+
+      <p class="note-block">
         曲目與錄音：Charlie Huang（Wikimedia Commons）<br />
-        授權條款：CC BY 2.5 — creativecommons.org/licenses/by/2.5<br />
-        樂譜來源：《楳盦珡諩》（1931）等古琴譜本
+        授權條款：CC BY-SA 3.0 / CC BY 2.5<br />
+        樂譜來源：《楳盦珡諩》（1931）、《天聞閣琴譜》（1876）等古琴譜本
       </p>
 
       <p>遊戲中的 3D 場景、字碑、介面皆為程式生成，沒有使用任何第三方美術素材。
@@ -164,11 +228,18 @@
     </div>
 
     <div class="controls" style="margin-top:18px;margin-bottom:0">
-      <span><b>W A S D</b> 移動</span>
-      <span><b>Shift</b> 加速</span>
-      <span><b>空白鍵</b> 跳躍</span>
+      <span><b>W A S D</b> 划船</span>
+      <span><b>Shift / 奮楫</b> 加速</span>
+      <span><b>滑鼠 / 平板滑動</b> 轉向</span>
       <span><b>M</b> 靜音</span>
       <span><b>−</b> <b>=</b> 音量</span>
+    </div>
+
+    <div class="pause-actions">
+      <div id="pause-save-status" class="pause-save-tag">💾 進度已自動儲存於本機</div>
+      <button id="btn-resume">繼續遊玩</button>
+      <button id="btn-restart-level" class="ghost">重來本關</button>
+      <button id="btn-quit-title" class="ghost">返回標題畫面</button>
     </div>
   </div>
 </div>

@@ -113,7 +113,7 @@ export function drawMinimap(world, playerPos, yaw) {
   ctx.setLineDash([3, 4]);
   ctx.beginPath();
   for (let z = TERRAIN_START_Z; z <= TERRAIN_START_Z + TERRAIN_L; z += 8) {
-    const x = world.model.pathX(z);
+    const x = world.model.riverPathX ? world.model.riverPathX(z) : world.model.pathX(z);
     const px = toMapX(x);
     const py = toMapY(z);
     if (z === TERRAIN_START_Z) ctx.moveTo(px, py);
@@ -121,6 +121,27 @@ export function drawMinimap(world, playerPos, yaw) {
   }
   ctx.stroke();
   ctx.setLineDash([]);
+
+  if (world.rapids) {
+    ctx.fillStyle = "rgba(102, 217, 238, 0.35)";
+    for (const rap of world.rapids) {
+      const sy = toMapY(rap.startZ);
+      const ey = toMapY(rap.endZ);
+      const cx = toMapX(rap.centerX);
+      ctx.fillRect(cx - 3.5, sy, 7, ey - sy);
+    }
+  }
+
+  if (world.rocks) {
+    ctx.fillStyle = "#7a4338";
+    for (const rk of world.rocks) {
+      const rx = toMapX(rk.position.x);
+      const ry = toMapY(rk.position.z);
+      ctx.beginPath();
+      ctx.arc(rx, ry, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   for (const stele of world.steles) {
     const u = stele.userData;

@@ -3,8 +3,8 @@ const TRACK_FADE_SEC = 2.0;
 const DUCK_LEVEL = 0.22;
 
 const TRACKS = {
-  menu: { file: "menu-qiufengci.mp3", title: "秋風詞", credit: "Charlie Huang" },
-  1: { file: "chapter1-qiufengci.mp3", title: "秋風詞", credit: "Charlie Huang" },
+  menu: { file: "menu-zuiyu.mp3", title: "醉漁唱晚", credit: "Charlie Huang" },
+  1: { file: "chapter1-zuiyu.mp3", title: "醉漁唱晚", credit: "Charlie Huang" },
   2: { file: "chapter2-pingsha.mp3", title: "平沙落雁", credit: "Charlie Huang" },
   3: { file: "chapter3-liushui.mp3", title: "流水", credit: "Charlie Huang" },
   4: { file: "chapter4-jiukuang.mp3", title: "酒狂", credit: "Charlie Huang" },
@@ -59,6 +59,135 @@ function ensureContext() {
   master.gain.value = 0;
   master.connect(ctx.destination);
   return ctx;
+}
+
+let sfxGain = null;
+
+function ensureSfx() {
+  if (!ensureContext()) return null;
+  if (!sfxGain) {
+    sfxGain = ctx.createGain();
+    sfxGain.gain.value = muted ? 0 : Math.min(1, volume * 1.3);
+    sfxGain.connect(ctx.destination);
+  }
+  return sfxGain;
+}
+
+export function playThudSound() {
+  if (!ensureSfx() || muted) return;
+  tryResume();
+  const now = ctx.currentTime;
+
+  // Low punch wood hull thud
+  const osc = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(130, now);
+  osc.frequency.exponentialRampToValueAtTime(32, now + 0.28);
+
+  oscGain.gain.setValueAtTime(0.75, now);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+  osc.connect(oscGain);
+  oscGain.connect(sfxGain);
+  osc.start(now);
+  osc.stop(now + 0.32);
+
+  // Scrape / crunch impact noise
+  const bufferSize = Math.floor(ctx.sampleRate * 0.14);
+  const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(480, now);
+  filter.Q.value = 1.6;
+
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.5, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+  noise.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(sfxGain);
+  noise.start(now);
+  noise.stop(now + 0.15);
+}
+
+export function playSplashSound() {
+  if (!ensureSfx() || muted) return;
+  tryResume();
+  const now = ctx.currentTime;
+  const dur = 0.36;
+  const bufferSize = Math.floor(ctx.sampleRate * dur);
+  const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1100, now);
+  filter.frequency.exponentialRampToValueAtTime(300, now + dur);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.4, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(sfxGain);
+  noise.start(now);
+  noise.stop(now + dur + 0.02);
+}
+
+export function playCurrentBoostSound() {
+  if (!ensureSfx() || muted) return;
+  tryResume();
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(240, now);
+  osc.frequency.exponentialRampToValueAtTime(520, now + 0.22);
+  osc.frequency.exponentialRampToValueAtTime(310, now + 0.48);
+
+  gain.gain.setValueAtTime(0.04, now);
+  gain.gain.linearRampToValueAtTime(0.25, now + 0.16);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+
+  osc.connect(gain);
+  gain.connect(sfxGain);
+  osc.start(now);
+  osc.stop(now + 0.55);
+}
+
+export function playScoreChimeSound() {
+  if (!ensureSfx() || muted) return;
+  tryResume();
+  const now = ctx.currentTime;
+  [523.25, 659.25, 783.99].forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    const t = now + idx * 0.07;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    osc.connect(gain);
+    gain.connect(sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.45);
+  });
 }
 
 let unlockInstalled = false;
@@ -229,12 +358,14 @@ export function setVolume(value) {
     void e;
   }
   if (ctx) rampGain(master, targetGain(), 0.2);
+  if (sfxGain) sfxGain.gain.value = muted ? 0 : Math.min(1, volume * 1.3);
   emit();
 }
 
 export function setMuted(value) {
   muted = value;
   if (ctx) rampGain(master, targetGain(), 0.25);
+  if (sfxGain) sfxGain.gain.value = muted ? 0 : Math.min(1, volume * 1.3);
   emit();
 }
 
