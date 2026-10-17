@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>與宋元思書・山水謎境</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2ece0'/%3E%3Cpath d='M2 24 L11 9 L17 18 L21 13 L30 24 Z' fill='%233f6b5f'/%3E%3Ccircle cx='25' cy='7' r='3.5' fill='%239c2b1e'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="./src/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/webgpu": "./vendor/three.module.js",
+    "three/tsl": "./vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+
+  <div id="topbar">
+    <div id="chapter">
+      <div id="chapter-index">第一關</div>
+      <div id="chapter-title">風煙俱淨</div>
+      <div id="chapter-line">風煙俱淨，天山共色。</div>
+    </div>
+    <div id="stats">
+      <div id="hearts"></div>
+      <div id="score">分數 0</div>
+    </div>
+  </div>
+
+  <div id="soundbar">
+    <button id="btn-mute" title="靜音（M）">♪</button>
+    <input id="volume" type="range" min="0" max="100" value="55" />
+    <span id="track-name"></span>
+  </div>
+
+  <div id="objective">
+    <span id="objective-text">尋找三面字碑，破關前進</span>
+  </div>
+
+  <div id="minimap">
+    <canvas id="minimap-canvas" width="180" height="180"></canvas>
+    <div id="minimap-label">字碑 0 / 3</div>
+  </div>
+</div>
+
+<div id="title-screen" class="overlay">
+  <div class="ink-card">
+    <h1>與宋元思書</h1>
+    <p class="subtitle">山 水 謎 境</p>
+    <p class="byline">南朝梁・吳均</p>
+
+    <div class="passage">
+      <p>風煙俱淨，天山共色。從流飄蕩，任意東西。自富陽至桐廬一百許里，奇山異水，天下獨絕。</p>
+      <p>水皆縹碧，千丈見底。游魚細石，直視無礙。急湍甚箭，猛浪若奔。</p>
+      <p>夾岸高山，皆生寒樹，負勢競上，互相軒邈；爭高直指，千百成峯。</p>
+      <p>泉水激石，泠泠作響；好鳥相鳴，嚶嚶成韻。蟬則千轉不窮，猿則百叫無絕。</p>
+      <p>鳶飛戾天者，望峰息心；經綸世務者，窺谷忘反。橫柯上蔽，在晝猶暝；疏條交映，有時見日。</p>
+    </div>
+
+    <div class="controls">
+      <span><b>W A S D</b> 移動</span>
+      <span><b>滑鼠</b> 轉向</span>
+      <span><b>空白鍵</b> 跳躍</span>
+      <span><b>M</b> 音樂開關</span>
+      <span><b>Esc</b> 放開滑鼠</span>
+    </div>
+
+    <button id="btn-start">開始遊戲</button>
+    <button id="btn-reset" class="ghost">清除進度</button>
+    <button id="btn-credits" class="ghost">音樂與版權</button>
+  </div>
+</div>
+
+<div id="credits-layer" class="overlay hidden">
+  <div class="ink-card">
+    <h1>音樂與版權</h1>
+    <p class="subtitle">全部為真實樂器錄音，非合成音</p>
+
+    <div class="passage credits">
+      <p><b>音樂來源</b><br />
+      全部為 Wikimedia Commons 上的古琴實拍錄音，由英國演奏者 Charlie Huang 錄製，
+      授權為 Creative Commons Attribution 2.5（CC BY 2.5），可自由使用、修改，
+      須保留以下署名。本專案僅裁切片段並做等功率淡接以利循環播放，未改動演奏內容。</p>
+
+      <table class="credit-table">
+        <thead>
+          <tr><th>曲目</th><th>用於</th><th>原始錄音</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>秋風詞</td><td>標題畫面、第一關</td><td><a href="https://commons.wikimedia.org/wiki/File:Qiu_Feng_Ci.ogg">Qiu Feng Ci.ogg</a></td></tr>
+          <tr><td>平沙落雁</td><td>第二關</td><td><a href="https://commons.wikimedia.org/wiki/File:Pingsha_Luoyan.ogg">Pingsha Luoyan.ogg</a></td></tr>
+          <tr><td>流水</td><td>第三關</td><td><a href="https://commons.wikimedia.org/wiki/File:Liu_Shui.ogg">Liu Shui.ogg</a></td></tr>
+          <tr><td>酒狂</td><td>第四關</td><td><a href="https://commons.wikimedia.org/wiki/File:Jiu_Kuang.ogg">Jiu Kuang.ogg</a></td></tr>
+        </tbody>
+      </table>
+
+      <p class="note-block">
+        曲目與錄音：Charlie Huang（Wikimedia Commons）<br />
+        授權條款：CC BY 2.5 — creativecommons.org/licenses/by/2.5<br />
+        樂譜來源：《楳盦珡諩》（1931）等古琴譜本
+      </p>
+
+      <p>遊戲中的 3D 場景、字碑、介面皆為程式生成，沒有使用任何第三方美術素材。
+      遊戲本身不使用任何 AI 生成內容，也不會連線到任何外部服務。</p>
+    </div>
+
+    <button id="btn-credits-close">關閉</button>
+  </div>
+</div>
+
+<div id="quiz-layer" class="overlay hidden">
+  <div class="quiz-card">
+    <div class="quiz-head">
+      <span class="quiz-char" id="quiz-char">淨</span>
+      <div>
+        <div class="quiz-tag" id="quiz-tag">實詞</div>
+        <div class="quiz-hint" id="quiz-hint"></div>
+      </div>
+    </div>
+    <p class="quiz-question" id="quiz-question"></p>
+    <div id="quiz-options"></div>
+    <div id="quiz-feedback"></div>
+  </div>
+</div>
+
+<div id="story-layer" class="overlay hidden">
+  <div class="story-card">
+    <h2 id="story-title"></h2>
+    <div class="story-body" id="story-body"></div>
+    <button id="story-next">繼續</button>
+  </div>
+</div>
+
+<div id="result-layer" class="overlay hidden">
+  <div class="ink-card">
+    <h1 id="result-title">遊戲結束</h1>
+    <div id="result-body"></div>
+    <button id="btn-replay">再玩一次</button>
+  </div>
+</div>
+
+<div id="pause-layer" class="overlay hidden">
+  <div class="ink-card pause-card">
+    <h1>暫停</h1>
+    <p class="subtitle">點擊畫面繼續</p>
+
+    <div class="pause-sound">
+      <button id="btn-mute-2">♪</button>
+      <input id="volume-2" type="range" min="0" max="100" value="55" />
+      <span id="track-name-2"></span>
+    </div>
+
+    <div class="pause-quality">
+      <button id="btn-quality">完整畫質</button>
+      <span id="quality-note">畫質設定會記住。若電腦沒有獨立顯示卡，請用低畫質。</span>
+    </div>
+
+    <div class="controls" style="margin-top:18px;margin-bottom:0">
+      <span><b>W A S D</b> 移動</span>
+      <span><b>Shift</b> 加速</span>
+      <span><b>空白鍵</b> 跳躍</span>
+      <span><b>M</b> 靜音</span>
+      <span><b>−</b> <b>=</b> 音量</span>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
