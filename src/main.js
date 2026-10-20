@@ -73,6 +73,7 @@ const btnResume = document.getElementById("btn-resume");
 const btnRestartLevel = document.getElementById("btn-restart-level");
 const btnQuitTitle = document.getElementById("btn-quit-title");
 const pauseSaveStatus = document.getElementById("pause-save-status");
+const pauseLayer = document.getElementById("pause-layer");
 
 const npcToast = document.getElementById("npc-toast");
 const toastAvatar = document.getElementById("toast-avatar");
@@ -136,8 +137,16 @@ function isTouchControlsActive() {
   return controlMode === "touch";
 }
 
+function isAnyModalOpen() {
+  if (guideLayer && !guideLayer.classList.contains("hidden")) return true;
+  if (creditsLayer && !creditsLayer.classList.contains("hidden")) return true;
+  return false;
+}
+
 function shouldLockPointer() {
-  return controlMode === "mouse";
+  if (controlMode !== "mouse") return false;
+  if (isAnyModalOpen()) return false;
+  return true;
 }
 
 const MAX_LIVES = 6;
@@ -613,6 +622,8 @@ function togglePause(forced) {
     setState("paused");
     setPause(true);
   } else {
+    if (guideLayer) guideLayer.classList.add("hidden");
+    if (creditsLayer) creditsLayer.classList.add("hidden");
     setPause(false);
     setState("playing");
     if (shouldLockPointer() && player) player.requestLock();
@@ -730,24 +741,47 @@ updateControlModeUI();
 btnCredits.addEventListener("click", () => creditsLayer.classList.remove("hidden"));
 btnCreditsClose.addEventListener("click", () => creditsLayer.classList.add("hidden"));
 
-for (const btn of [btnGuide, btnGuidePause]) {
-  if (btn) btn.addEventListener("click", () => guideLayer.classList.remove("hidden"));
+function openGuide() {
+  if (guideLayer) guideLayer.classList.remove("hidden");
+  if (state === "paused" && pauseLayer) pauseLayer.classList.add("hidden");
 }
-if (btnGuideClose) {
-  btnGuideClose.addEventListener("click", () => guideLayer.classList.add("hidden"));
-}
-for (const layer of [guideLayer, creditsLayer]) {
-  if (layer) {
-    layer.addEventListener("click", (e) => {
-      if (e.target === layer) layer.classList.add("hidden");
-    });
+
+function closeGuide() {
+  if (!guideLayer || guideLayer.classList.contains("hidden")) return;
+  guideLayer.classList.add("hidden");
+  if (state === "paused" && pauseLayer) {
+    pauseLayer.classList.remove("hidden");
   }
+}
+
+if (btnGuide) btnGuide.addEventListener("click", openGuide);
+if (btnGuidePause) btnGuidePause.addEventListener("click", openGuide);
+if (btnGuideClose) btnGuideClose.addEventListener("click", closeGuide);
+
+if (guideLayer) {
+  guideLayer.addEventListener("click", (e) => {
+    if (e.target === guideLayer) closeGuide();
+  });
+}
+
+if (creditsLayer) {
+  creditsLayer.addEventListener("click", (e) => {
+    if (e.target === creditsLayer) creditsLayer.classList.add("hidden");
+  });
 }
 
 document.addEventListener("keydown", (event) => {
   const typing = event.target instanceof HTMLInputElement;
   if (!typing && (event.code === "Escape" || event.code === "KeyP")) {
     event.preventDefault();
+    if (guideLayer && !guideLayer.classList.contains("hidden")) {
+      closeGuide();
+      return;
+    }
+    if (creditsLayer && !creditsLayer.classList.contains("hidden")) {
+      creditsLayer.classList.add("hidden");
+      return;
+    }
     togglePause();
     return;
   }

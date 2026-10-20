@@ -584,6 +584,13 @@ button.ghost:hover { background: rgba(27,27,31,.07); color: var(--ink); }
 #credits-layer .note-block { font-size: 12.5px; padding: 9px 13px; line-height: 1.75; }
 #credits-layer button { padding: 9px 30px; font-size: 15px; }
 
+/* Overlay layering hierarchy */
+#pause-layer { z-index: 22; }
+#story-layer, #quiz-layer { z-index: 24; }
+#result-layer { z-index: 26; }
+#guide-layer, #credits-layer { z-index: 35; }
+#mobile-warning { z-index: 40; }
+
 /* Guide layer styles */
 #guide-layer .ink-card {
   width: min(840px, 94vw);
