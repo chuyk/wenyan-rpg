@@ -96,7 +96,7 @@ export function createPlayer(camera, domElement, world, input) {
   const right = new THREE.Vector3();
   const wish = new THREE.Vector3();
 
-  let yaw = 0; // Facing downstream along positive Z
+  let yaw = Math.PI; // Facing downstream along positive Z (towards steles)
   let pitch = 0;
   let waveTime = 0;
   let locked = false;
@@ -110,19 +110,60 @@ export function createPlayer(camera, domElement, world, input) {
   feet.copy(world.spawn);
   velocity.set(0, 0, 0);
 
+  // Initialize camera and boat initial orientation immediately
+  camera.rotation.order = "YXZ";
+  camera.rotation.y = yaw;
+  camera.rotation.x = pitch;
+  camera.position.set(feet.x, feet.y + EYE_HEIGHT, feet.z);
+
   // Create boat in the scene
   const boat = buildBoatMesh();
+  boat.position.set(feet.x, feet.y, feet.z);
+  boat.rotation.order = "YXZ";
+  boat.rotation.y = yaw + Math.PI;
   if (camera.parent) {
     camera.parent.add(boat);
   } else {
     world.root.add(boat);
   }
 
+  let isMouseDown = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  function onMouseDown(event) {
+    if (event.button === 0) {
+      isMouseDown = true;
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+    }
+  }
+
+  function onMouseUp(event) {
+    if (event.button === 0) {
+      isMouseDown = false;
+    }
+  }
+
   function onMouseMove(event) {
-    if (!locked || !enabled) return;
-    yaw -= event.movementX * MOUSE_SENSITIVITY;
-    pitch -= event.movementY * MOUSE_SENSITIVITY;
-    pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+    if (!enabled) return;
+    if (locked) {
+      yaw -= event.movementX * MOUSE_SENSITIVITY;
+      pitch -= event.movementY * MOUSE_SENSITIVITY;
+      pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+    } else if (isMouseDown && (event.buttons & 1)) {
+      const dx = event.movementX !== undefined && Math.abs(event.movementX) < 120
+        ? event.movementX
+        : (event.clientX - lastMouseX);
+      const dy = event.movementY !== undefined && Math.abs(event.movementY) < 120
+        ? event.movementY
+        : (event.clientY - lastMouseY);
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+      yaw -= dx * MOUSE_SENSITIVITY;
+      pitch -= dy * MOUSE_SENSITIVITY;
+      pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+    }
   }
 
   function onKeyDown(event) {
@@ -136,11 +177,16 @@ export function createPlayer(camera, domElement, world, input) {
 
   function onLockChange() {
     locked = document.pointerLockElement === domElement;
-    if (!locked) input.pressed.clear();
+    if (!locked) {
+      input.pressed.clear();
+      isMouseDown = false;
+    }
     input.onLockChange(locked);
   }
 
-  domElement.addEventListener("mousemove", onMouseMove);
+  domElement.addEventListener("mousedown", onMouseDown);
+  window.addEventListener("mouseup", onMouseUp);
+  window.addEventListener("mousemove", onMouseMove);
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
   document.addEventListener("pointerlockchange", onLockChange);
@@ -308,7 +354,9 @@ export function createPlayer(camera, domElement, world, input) {
     },
     dispose() {
       if (boat.parent) boat.parent.remove(boat);
-      domElement.removeEventListener("mousemove", onMouseMove);
+      domElement.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("pointerlockchange", onLockChange);

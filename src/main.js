@@ -45,6 +45,10 @@ const btnReplay = document.getElementById("btn-replay");
 const btnCredits = document.getElementById("btn-credits");
 const btnCreditsClose = document.getElementById("btn-credits-close");
 const creditsLayer = document.getElementById("credits-layer");
+const btnGuide = document.getElementById("btn-guide");
+const btnGuidePause = document.getElementById("btn-guide-pause");
+const btnGuideClose = document.getElementById("btn-guide-close");
+const guideLayer = document.getElementById("guide-layer");
 const btnMute = document.getElementById("btn-mute");
 const volumeSlider = document.getElementById("volume");
 const trackName = document.getElementById("track-name");
@@ -53,6 +57,8 @@ const volumeSlider2 = document.getElementById("volume-2");
 const trackName2 = document.getElementById("track-name-2");
 const btnQuality = document.getElementById("btn-quality");
 const qualityNote = document.getElementById("quality-note");
+const btnControlMode = document.getElementById("btn-control-mode");
+const controlModeNote = document.getElementById("control-mode-note");
 const btnPauseTouch = document.getElementById("btn-pause-touch");
 const touchControls = document.getElementById("touch-controls");
 const joystickZone = document.getElementById("touch-joystick-zone");
@@ -99,10 +105,40 @@ function handleFlaskReward(info) {
   showNpcToast("江中漂流竹筒", info.avatar, info.title);
 }
 
-const isTouchDevice =
-  "ontouchstart" in window ||
-  navigator.maxTouchPoints > 0 ||
-  window.matchMedia("(pointer: coarse)").matches;
+const CONTROL_MODE_KEY = "wenyan-rpg-control-mode";
+
+// Accurately detect if the device is a pure touch device (mobile phone or tablet without precision pointer)
+// 14-inch laptops and desktop PCs with/without touchscreen will return FALSE because they have pointer: fine and desktop UA.
+function detectTouchOnly() {
+  const isMobileUA =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const hasCoarseOnly =
+    window.matchMedia("(pointer: coarse)").matches &&
+    !window.matchMedia("(pointer: fine)").matches;
+  return isMobileUA || hasCoarseOnly;
+}
+
+function getStoredControlMode() {
+  try {
+    const saved = localStorage.getItem(CONTROL_MODE_KEY);
+    if (saved === "mouse" || saved === "touch") return saved;
+  } catch (e) {
+    void e;
+  }
+  return null;
+}
+
+// Current control mode: "mouse" for PC/laptop (WASD + mouse look), "touch" for tablet/mobile (virtual joystick)
+let controlMode = getStoredControlMode() || (detectTouchOnly() ? "touch" : "mouse");
+
+function isTouchControlsActive() {
+  return controlMode === "touch";
+}
+
+function shouldLockPointer() {
+  return controlMode === "mouse";
+}
 
 const MAX_LIVES = 6;
 const STELE_SCORE = 100;
@@ -258,7 +294,7 @@ function setState(next) {
   if (player) player.setEnabled(next === "playing");
   if (next !== "playing" && player && player.locked) player.exitLock();
   if (touchControls) {
-    touchControls.classList.toggle("hidden", next !== "playing" || !isTouchDevice);
+    touchControls.classList.toggle("hidden", next !== "playing" || !isTouchControlsActive());
   }
 }
 
@@ -302,13 +338,14 @@ function setupLevel(index, { autoStart = false, withMusic = true } = {}) {
 
   if (autoStart) {
     setState("playing");
+    if (shouldLockPointer() && player) player.requestLock();
     return;
   }
 
   setState("story");
   openStory(level, () => {
     setState("playing");
-    if (!isTouchDevice) player.requestLock();
+    if (shouldLockPointer() && player) player.requestLock();
   });
 }
 
@@ -375,7 +412,7 @@ function triggerQuiz(stele) {
       if (firstTry) firstTryCorrect += 1;
       quizActive = false;
       setState("playing");
-      if (!isTouchDevice) player.requestLock();
+      if (shouldLockPointer() && player) player.requestLock();
       onSteleSolved(stele);
     },
   });
@@ -578,7 +615,7 @@ function togglePause(forced) {
   } else {
     setPause(false);
     setState("playing");
-    if (!isTouchDevice && player) player.requestLock();
+    if (shouldLockPointer() && player) player.requestLock();
   }
 }
 
@@ -621,16 +658,18 @@ document.getElementById("pause-layer").addEventListener("click", (e) => {
   }
 });
 
+let wasLocked = false;
 input.onLockChange = (locked) => {
-  if (!isTouchDevice && state === "playing" && !locked) {
+  if (wasLocked && !locked && state === "playing") {
     isPaused = true;
     setState("paused");
     setPause(true);
   }
+  wasLocked = locked;
 };
 
 canvas.addEventListener("click", () => {
-  if (!isTouchDevice && state === "playing" && !player.locked) player.requestLock();
+  if (state === "playing" && player && !player.locked) player.requestLock();
 });
 
 for (const btn of [btnMute, btnMute2]) {
@@ -655,8 +694,55 @@ btnQuality.addEventListener("click", () => {
   setupLevel(levelIndex, { autoStart: state === "playing" });
 });
 
+function updateControlModeUI() {
+  const isTouch = isTouchControlsActive();
+  if (btnControlMode) {
+    btnControlMode.textContent = isTouch ? "操作模式：📱 觸控輪盤" : "操作模式：💻 鍵盤滑鼠";
+  }
+  if (controlModeNote) {
+    controlModeNote.textContent = isTouch
+      ? "已開啟平板觸控模式：畫面顯示操舵輪盤、右側滑動轉向與奮楫加速。"
+      : "已開啟筆電/電腦模式：WASD 划船，移動滑鼠旋轉視角（按 Esc 暫停解除）。";
+  }
+  if (touchControls) {
+    touchControls.classList.toggle("hidden", state !== "playing" || !isTouch);
+  }
+}
+
+function toggleControlMode() {
+  controlMode = controlMode === "mouse" ? "touch" : "mouse";
+  try {
+    localStorage.setItem(CONTROL_MODE_KEY, controlMode);
+  } catch (e) {
+    void e;
+  }
+  updateControlModeUI();
+  if (controlMode === "mouse" && state === "playing" && player) {
+    player.requestLock();
+  }
+}
+
+if (btnControlMode) {
+  btnControlMode.addEventListener("click", toggleControlMode);
+}
+updateControlModeUI();
+
 btnCredits.addEventListener("click", () => creditsLayer.classList.remove("hidden"));
 btnCreditsClose.addEventListener("click", () => creditsLayer.classList.add("hidden"));
+
+for (const btn of [btnGuide, btnGuidePause]) {
+  if (btn) btn.addEventListener("click", () => guideLayer.classList.remove("hidden"));
+}
+if (btnGuideClose) {
+  btnGuideClose.addEventListener("click", () => guideLayer.classList.add("hidden"));
+}
+for (const layer of [guideLayer, creditsLayer]) {
+  if (layer) {
+    layer.addEventListener("click", (e) => {
+      if (e.target === layer) layer.classList.add("hidden");
+    });
+  }
+}
 
 document.addEventListener("keydown", (event) => {
   const typing = event.target instanceof HTMLInputElement;
@@ -822,6 +908,12 @@ if (touchLookZone) {
   let lookTouchId = null;
   let lastTouchX = 0;
   let lastTouchY = 0;
+
+  touchLookZone.addEventListener("click", () => {
+    if (state === "playing" && player && !player.locked) {
+      player.requestLock();
+    }
+  });
 
   touchLookZone.addEventListener(
     "touchstart",
@@ -1010,4 +1102,6 @@ window.__wenyanDebug = {
   skipStory: () => {
     document.getElementById("story-next").click();
   },
+  toggleControlMode: () => toggleControlMode(),
+  getControlMode: () => controlMode,
 };

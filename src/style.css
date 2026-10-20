@@ -584,22 +584,135 @@ button.ghost:hover { background: rgba(27,27,31,.07); color: var(--ink); }
 #credits-layer .note-block { font-size: 12.5px; padding: 9px 13px; line-height: 1.75; }
 #credits-layer button { padding: 9px 30px; font-size: 15px; }
 
-.pause-quality {
+/* Guide layer styles */
+#guide-layer .ink-card {
+  width: min(840px, 94vw);
+  max-height: 88vh;
+  padding: 30px 36px 24px;
+}
+
+#guide-layer h1 {
+  font-size: 32px;
+  letter-spacing: .22em;
+}
+
+.guide-passage {
+  margin: 18px auto 20px;
+  max-width: none;
+  font-size: 14px;
+  line-height: 1.8;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.guide-section {
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(27, 27, 31, 0.1);
+  border-left: 4px solid var(--jade);
+  border-radius: 4px;
+  padding: 14px 18px;
+  text-align: left;
+}
+
+.guide-section:nth-child(2) {
+  border-left-color: var(--gold);
+}
+
+.guide-section:nth-child(3) {
+  border-left-color: #4a6fa5;
+}
+
+.guide-section:nth-child(4) {
+  border-left-color: var(--seal);
+}
+
+.guide-section h3 {
+  font-size: 16px;
+  letter-spacing: .15em;
+  color: var(--ink);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guide-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 8px;
+  color: #3d3b36;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.guide-list li:last-child {
+  margin-bottom: 0;
+}
+
+.guide-list li::before {
+  content: "•";
+  position: absolute;
+  left: 4px;
+  color: var(--jade);
+  font-weight: bold;
+}
+
+.guide-section:nth-child(2) .guide-list li::before {
+  color: var(--gold);
+}
+
+.guide-section:nth-child(3) .guide-list li::before {
+  color: #4a6fa5;
+}
+
+.guide-section:nth-child(4) .guide-list li::before {
+  color: var(--seal);
+}
+
+.guide-list code,
+.guide-list kbd {
+  background: rgba(27, 27, 31, 0.08);
+  border: 1px solid rgba(27, 27, 31, 0.18);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+#guide-layer button {
+  padding: 9px 32px;
+  font-size: 15px;
+}
+
+.pause-quality,
+.pause-control-mode {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
-.pause-quality button {
+.pause-quality button,
+.pause-control-mode button {
   font-size: 14px;
   padding: 8px 22px;
   margin: 0;
   flex: 0 0 auto;
 }
 
-.pause-quality span {
+.pause-quality span,
+.pause-control-mode span {
   font-size: 12px;
   color: #6b6862;
   line-height: 1.6;
