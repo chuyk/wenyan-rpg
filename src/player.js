@@ -132,16 +132,21 @@ export function createPlayer(camera, domElement, world, input) {
   let lastMouseY = 0;
 
   function onMouseDown(event) {
+    if (event.target && (event.target.closest("button") || event.target.closest("input"))) {
+      return;
+    }
     if (event.button === 0) {
       isMouseDown = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
+      document.body.classList.add("is-dragging-camera");
     }
   }
 
   function onMouseUp(event) {
     if (event.button === 0) {
       isMouseDown = false;
+      document.body.classList.remove("is-dragging-camera");
     }
   }
 
@@ -152,18 +157,20 @@ export function createPlayer(camera, domElement, world, input) {
       pitch -= event.movementY * MOUSE_SENSITIVITY;
       pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
     } else if (isMouseDown && (event.buttons & 1)) {
-      const dx = event.movementX !== undefined && Math.abs(event.movementX) < 120
-        ? event.movementX
-        : (event.clientX - lastMouseX);
-      const dy = event.movementY !== undefined && Math.abs(event.movementY) < 120
-        ? event.movementY
-        : (event.clientY - lastMouseY);
+      const dx = event.clientX - lastMouseX;
+      const dy = event.clientY - lastMouseY;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
       yaw -= dx * MOUSE_SENSITIVITY;
       pitch -= dy * MOUSE_SENSITIVITY;
       pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
     }
+  }
+
+  function onBlur() {
+    isMouseDown = false;
+    document.body.classList.remove("is-dragging-camera");
+    input.pressed.clear();
   }
 
   function onKeyDown(event) {
@@ -187,6 +194,7 @@ export function createPlayer(camera, domElement, world, input) {
   domElement.addEventListener("mousedown", onMouseDown);
   window.addEventListener("mouseup", onMouseUp);
   window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("blur", onBlur);
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
   document.addEventListener("pointerlockchange", onLockChange);
@@ -354,9 +362,11 @@ export function createPlayer(camera, domElement, world, input) {
     },
     dispose() {
       if (boat.parent) boat.parent.remove(boat);
+      document.body.classList.remove("is-dragging-camera");
       domElement.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("blur", onBlur);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("keyup", onKeyUp);
       document.removeEventListener("pointerlockchange", onLockChange);

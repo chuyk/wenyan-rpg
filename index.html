@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>與宋元思書・山水謎境</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2ece0'/%3E%3Cpath d='M2 24 L11 9 L17 18 L21 13 L30 24 Z' fill='%233f6b5f'/%3E%3Ccircle cx='25' cy='7' r='3.5' fill='%239c2b1e'/%3E%3C/svg%3E" />
-<link rel="stylesheet" href="./src/style.css?v=4" />
+<link rel="stylesheet" href="./src/style.css?v=5" />
 <script type="importmap">
 {
   "imports": {
@@ -94,8 +94,8 @@
 
     <div class="controls">
       <span><b>W A S D</b> 划船前進</span>
-      <span><b>滑鼠 / 平板滑動</b> 轉向</span>
-      <span><b>Shift / 奮楫</b> 加速</span>
+      <span><b>按住滑鼠左鍵拖曳</b> 旋轉視角</span>
+      <span><b>Shift / 空白鍵</b> 奮楫加速</span>
       <span><b>M</b> 音樂開關</span>
       <span><b>Esc / ⏸</b> 暫停</span>
     </div>
@@ -235,8 +235,8 @@
 
     <div class="controls" style="margin-top:18px;margin-bottom:0">
       <span><b>W A S D</b> 划船</span>
+      <span><b>按住滑鼠左鍵拖曳</b> 旋轉視角</span>
       <span><b>Shift / 奮楫</b> 加速</span>
-      <span><b>滑鼠 / 平板滑動</b> 轉向</span>
       <span><b>M</b> 靜音</span>
       <span><b>−</b> <b>=</b> 音量</span>
     </div>
@@ -261,12 +261,11 @@
         <h3>💻 電腦／筆電操作（鍵盤與滑鼠）</h3>
         <ul class="guide-list">
           <li><b>划船行舟：</b>按 <code>W</code> <code>A</code> <code>S</code> <code>D</code> 或方向鍵 <code>↑</code> <code>↓</code> <code>←</code> <code>→</code> 操控小舟前進、倒退與左右轉向。</li>
-          <li><b>環顧山水視角：</b>移動滑鼠即可 360 度環顧富春江兩岸山水景色。</li>
-          <li><b>鎖定／解鎖滑鼠：</b>點擊畫面任意處即可鎖定滑鼠視角；按 <code>Esc</code> 鍵隨時解除鎖定並進入暫停選單。</li>
-          <li><b>滑鼠拖曳轉向：</b>在未鎖定視角狀態下，亦可直接按住滑鼠左鍵拖曳旋轉視野。</li>
+          <li><b>按住左鍵拖曳視角（推薦）：</b>游標全程可見不迷航！按住滑鼠左鍵並移動，即可隨心所欲 360 度環顧富春江兩岸山水景色；放開滑鼠即可自由點選右上角暫停鍵 <code>⏸</code> 或音量調整。</li>
+          <li><b>視角模式切換：</b>若習慣傳統 FPS 遊戲的操作（移動滑鼠直接轉向，按 Esc 暫停並解鎖），可在暫停選單隨時切換為「🎯 滑鼠鎖定（FPS）」模式。</li>
           <li><b>奮楫加速衝刺：</b>長按 <code>Shift</code> 鍵或 <code>空白鍵（Space）</code> 奮力划槳加速破浪。</li>
           <li><b>古琴音樂控制：</b>按 <code>M</code> 鍵切換靜音／播放；按 <code>−</code> 與 <code>=</code> 鍵微調音量大小。</li>
-          <li><b>暫停選單：</b>隨時按下 <code>Esc</code> 鍵或點擊畫面右上角 <code>⏸</code> 按鈕暫停。</li>
+          <li><b>暫停選單：</b>隨時按下 <code>Esc</code> 鍵或直接點擊畫面右上角 <code>⏸</code> 按鈕暫停。</li>
         </ul>
       </div>
 
@@ -304,6 +303,6 @@
   </div>
 </div>
 
-<script type="module" src="./src/main.js?v=4"></script>
+<script type="module" src="./src/main.js?v=5"></script>
 </body>
 </html>

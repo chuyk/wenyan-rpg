@@ -123,15 +123,19 @@ function detectTouchOnly() {
 function getStoredControlMode() {
   try {
     const saved = localStorage.getItem(CONTROL_MODE_KEY);
-    if (saved === "mouse" || saved === "touch") return saved;
+    if (saved === "drag" || saved === "lock" || saved === "touch") return saved;
+    if (saved === "mouse") return "drag";
   } catch (e) {
     void e;
   }
   return null;
 }
 
-// Current control mode: "mouse" for PC/laptop (WASD + mouse look), "touch" for tablet/mobile (virtual joystick)
-let controlMode = getStoredControlMode() || (detectTouchOnly() ? "touch" : "mouse");
+// Current control mode:
+// "drag" for PC/laptop (WASD + click-and-drag to look around, cursor free at all times)
+// "lock" for FPS players (WASD + mouse look with pointer lock, press Esc to pause/unlock)
+// "touch" for tablet/mobile (virtual joystick & touch look)
+let controlMode = getStoredControlMode() || (detectTouchOnly() ? "touch" : "drag");
 
 function isTouchControlsActive() {
   return controlMode === "touch";
@@ -144,7 +148,7 @@ function isAnyModalOpen() {
 }
 
 function shouldLockPointer() {
-  if (controlMode !== "mouse") return false;
+  if (controlMode !== "lock") return false;
   if (isAnyModalOpen()) return false;
   return true;
 }
@@ -671,7 +675,7 @@ document.getElementById("pause-layer").addEventListener("click", (e) => {
 
 let wasLocked = false;
 input.onLockChange = (locked) => {
-  if (wasLocked && !locked && state === "playing") {
+  if (controlMode === "lock" && wasLocked && !locked && state === "playing") {
     isPaused = true;
     setState("paused");
     setPause(true);
@@ -680,7 +684,9 @@ input.onLockChange = (locked) => {
 };
 
 canvas.addEventListener("click", () => {
-  if (state === "playing" && player && !player.locked) player.requestLock();
+  if (controlMode === "lock" && state === "playing" && player && !player.locked && shouldLockPointer()) {
+    player.requestLock();
+  }
 });
 
 for (const btn of [btnMute, btnMute2]) {
@@ -706,29 +712,46 @@ btnQuality.addEventListener("click", () => {
 });
 
 function updateControlModeUI() {
-  const isTouch = isTouchControlsActive();
   if (btnControlMode) {
-    btnControlMode.textContent = isTouch ? "操作模式：📱 觸控輪盤" : "操作模式：💻 鍵盤滑鼠";
+    if (controlMode === "drag") {
+      btnControlMode.textContent = "操作模式：💻 滑鼠拖曳（推薦）";
+    } else if (controlMode === "lock") {
+      btnControlMode.textContent = "操作模式：🎯 滑鼠鎖定（FPS）";
+    } else {
+      btnControlMode.textContent = "操作模式：📱 平板觸控輪盤";
+    }
   }
   if (controlModeNote) {
-    controlModeNote.textContent = isTouch
-      ? "已開啟平板觸控模式：畫面顯示操舵輪盤、右側滑動轉向與奮楫加速。"
-      : "已開啟筆電/電腦模式：WASD 划船，移動滑鼠旋轉視角（按 Esc 暫停解除）。";
+    if (controlMode === "drag") {
+      controlModeNote.textContent = "推薦模式：按住滑鼠左鍵拖曳旋轉 3D 視角，游標常駐隨時可點選單與音量。";
+    } else if (controlMode === "lock") {
+      controlModeNote.textContent = "FPS 模式：移動滑鼠直接轉向，游標鎖定，按 Esc 暫停並解鎖游標。";
+    } else {
+      controlModeNote.textContent = "平板模式：畫面顯示左下操舵輪盤、右半部滑動轉向與奮楫衝刺。";
+    }
   }
   if (touchControls) {
-    touchControls.classList.toggle("hidden", state !== "playing" || !isTouch);
+    touchControls.classList.toggle("hidden", state !== "playing" || controlMode !== "touch");
   }
 }
 
 function toggleControlMode() {
-  controlMode = controlMode === "mouse" ? "touch" : "mouse";
+  if (controlMode === "drag") {
+    controlMode = "lock";
+  } else if (controlMode === "lock") {
+    controlMode = "touch";
+  } else {
+    controlMode = "drag";
+  }
   try {
     localStorage.setItem(CONTROL_MODE_KEY, controlMode);
   } catch (e) {
     void e;
   }
   updateControlModeUI();
-  if (controlMode === "mouse" && state === "playing" && player) {
+  if (controlMode !== "lock" && player && player.locked) {
+    player.exitLock();
+  } else if (controlMode === "lock" && state === "playing" && player && shouldLockPointer()) {
     player.requestLock();
   }
 }
@@ -944,7 +967,7 @@ if (touchLookZone) {
   let lastTouchY = 0;
 
   touchLookZone.addEventListener("click", () => {
-    if (state === "playing" && player && !player.locked) {
+    if (controlMode === "lock" && state === "playing" && player && !player.locked && shouldLockPointer()) {
       player.requestLock();
     }
   });
